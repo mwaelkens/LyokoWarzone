@@ -8,13 +8,16 @@ import time
 import json
 from discord.ext import commands  
 from discord.utils import get
+from dotenv import load_dotenv
+
+load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-token = os.environ['TOKEN_BOT_DISCORD']
+token = os.getenv("TOKEN_BOT_DISCORD")
 
 # Connexion à la base de données SQLite
 conn = sqlite3.connect("lyoko_rpg.db")
@@ -125,69 +128,36 @@ async def spawn_monstre():
                 # Envoi du message dans le canal
                 channel = discord.utils.get(guild.text_channels, id=channel_id)
                 if channel:
+                    titre = "⚠️ Attention !"
+                    description = f"Le premier à taper `/kill` gagne {monstre_actuel['xp']} XP !"
+
                     if monstre_actuel == kolosse:
-                        embed = discord.Embed(
-                            title=f"⚠️ Attention ! Xana envoie le {monstre_actuel['nom']} !",
-                            description=f"Le Kolosse est très puissant ! Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                            color=discord.Color.red()
-                        )
-                        embed.set_image(url=monstre_actuel['image'])
-                        await channel.send(embed=embed)
+                        titre += f" Xana envoie le {monstre_actuel['nom']} !"
+                        description = "Le Kolosse est très puissant ! " + description
                     elif monstre_actuel == william:
-                        embed = discord.Embed(
-                            title=f"⚠️ Attention ! Xana a envoyé {monstre_actuel['nom']} !",
-                            description=f"On dirait qu'il veut en découdre ! Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                            color=discord.Color.red()
-                        )
-                        embed.set_image(url=monstre_actuel['image'])
-                        await channel.send(embed=embed)
+                        titre += f" Xana a envoyé {monstre_actuel['nom']} !"
+                        description = "On dirait qu'il veut en découdre ! " + description
                     elif monstre_actuel == méduse:
-                        embed = discord.Embed(
-                            title=f"⚠️ Attention ! Xana a envoyé la {monstre_actuel['nom']} !",
-                            description=f"Attention à la xanatification ! Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                            color=discord.Color.red()
-                        )
-                        embed.set_image(url=monstre_actuel['image'])
-                        await channel.send(embed=embed)
+                        titre += f" Xana a envoyé la {monstre_actuel['nom']} !"
+                        description = "Attention à la xanatification ! " + description
                     elif monstre_actuel == kalamar:
-                        embed = discord.Embed(
-                            title=f"⚠️ Attention ! Xana a envoyé le {monstre_actuel['nom']} !",
-                            description=f"Attention au skid ! Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                            color=discord.Color.red()
-                        )
-                        embed.set_image(url=monstre_actuel['image'])
-                        await channel.send(embed=embed)
+                        titre += f" Xana a envoyé le {monstre_actuel['nom']} !"
+                        description = "Attention au skid ! " + description
+                    elif monstre_actuel['nom'] in ["Tarentule", "Manta"]:
+                        titre += f" Une {monstre_actuel['nom']} est apparue !"
                     else:
-                        if monstre_actuel['nom'] == "Tarentule": 
-                            embed = discord.Embed(
-                                title=f"⚠️ Attention ! Une {monstre_actuel['nom']} est apparu !",
-                                description=f"Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                                color=discord.Color.red()
-                            )
-                            embed.set_image(url=monstre_actuel['image'])
-                            await channel.send(embed=embed)
-                        elif monstre_actuel['nom'] == "Manta":
-                            embed = discord.Embed(
-                                title=f"⚠️ Attention ! Une {monstre_actuel['nom']} est apparu !",
-                                description=f"Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                                color=discord.Color.red()
-                            )
-                            embed.set_image(url=monstre_actuel['image'])
-                            await channel.send(embed=embed)
-                        else:
-                            embed = discord.Embed(
-                                title=f"⚠️ Attention ! Un {monstre_actuel['nom']} est apparu !",
-                                description=f"Le premier à taper `!kill` gagne {monstre_actuel['xp']} XP !",
-                                color=discord.Color.red()
-                            )
-                            embed.set_image(url=monstre_actuel['image'])
-                            await channel.send(embed=embed)
+                        titre += f" Un {monstre_actuel['nom']} est apparu !"
+
+                    embed = discord.Embed(title=titre, description=description, color=discord.Color.red())
+                    embed.set_image(url=monstre_actuel['image'])
+
+                    await channel.send(embed=embed)
 
         await asyncio.sleep(1)
 
-@bot.command()
-async def nextmonstre(ctx):
-    server_id = ctx.guild.id
+@bot.tree.command(name="nextmonstre", description="🕒 Affiche le temps restant avant qu'un monstre apparaisse.")
+async def nextmonstre(interaction: discord.Interaction):
+    server_id = interaction.guild.id
 
     # Récupérer les données spécifiques à ce serveur : current_monster, cooldown_rest
     cursor.execute("SELECT current_monster, cooldown_rest FROM settings WHERE server_id = ?", (server_id,))
@@ -200,15 +170,15 @@ async def nextmonstre(ctx):
         if monstre_actuel:
             embed = discord.Embed(
                 title="👾 Un monstre est déjà présent !",
-                description="Tuez-le d'abord avec `!kill` avant qu'un autre n'apparaisse.",
+                description="Tuez-le d'abord avec `/kill` avant qu'un autre n'apparaisse.",
                 color=discord.Color.red()
             )
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         # Calcul du cooldown si nécessaire
         if cooldown_rest is None:
-            # Si jamais la valeur de dernier_spawn est None, on initialise un premier spawn
+            # Si jamais la valeur de cooldown_rest est None, on initialise un premier spawn
             cooldown_rest = time.time() + cooldown_spawn
             cursor.execute("UPDATE settings SET cooldown_rest = ? WHERE server_id = ?", (cooldown_rest, server_id))
             conn.commit()
@@ -238,11 +208,11 @@ async def nextmonstre(ctx):
             description=description,
             color=couleur
         )
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
     else:
         # Si aucune donnée trouvée pour ce serveur, initialiser les valeurs
-        cursor.execute("INSERT INTO settings (server_id, current_monster, cooldown_rest) VALUES (?, ?, ?, ?)",
+        cursor.execute("INSERT INTO settings (server_id, current_monster, cooldown_rest) VALUES (?, ?, ?)",
                        (server_id, None, cooldown_spawn))
         conn.commit()
         embed = discord.Embed(
@@ -250,13 +220,13 @@ async def nextmonstre(ctx):
             description="Aucun spawn n'a encore eu lieu. Le cooldown est initialisé.",
             color=discord.Color.red()
         )
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 
-@bot.command()
-async def kill(ctx):
-    server_id = ctx.guild.id
-    user_id = ctx.author.id
+@bot.tree.command(name="kill", description="⚔️ Permet d'attaquer le monstre actuellement apparu dans le salon.")
+async def kill(interaction: discord.Interaction):
+    server_id = interaction.guild.id
+    user_id = interaction.user.id
 
     # Récupérer le monstre en cours
     cursor.execute("SELECT current_monster FROM settings WHERE server_id = ?", (server_id,))
@@ -282,20 +252,35 @@ async def kill(ctx):
                        (cooldown_timestamp, server_id))
         conn.commit()
 
-        # Message d'annonce de la victoire
-        description = f"Félicitations {ctx.author.mention} ! Tu as vaincu {monstre_actuel['nom']} ! **{xp_gagnee} XP** ont été ajoutés."
+        # Définition du titre et de la description du message de victoire
+        nom_monstre = monstre_actuel['nom']
+
+        if nom_monstre == "Méduse":
+            article = "la"
+        elif nom_monstre in ["Kolosse", "Kalamar", "William"]:
+            article = "le"
+        elif nom_monstre in ["Manta", "Tarentule"]:
+            article = "une"
+        else:
+            article = "un"
+
+        description = f"Félicitations {interaction.user.mention} ! Tu as vaincu {article} {nom_monstre} ! **{xp_gagnee} XP** ont été ajoutés."
+
+        # Création de l'embed
         embed = discord.Embed(description=description, color=discord.Color.green())
         embed.set_thumbnail(url=monstre_actuel["image"])
-        await ctx.send(embed=embed)
 
-        await check_level_up(ctx, user_id, server_id)
+        # Envoi du message
+        await interaction.response.send_message(embed=embed)
+
+        await check_level_up(interaction, user_id, server_id)
     else:
         embed = discord.Embed(
             title="❌ Aucun monstre ici !",
             description="Il n'y a **aucun monstre** à combattre dans ce canal.",
             color=discord.Color.red()
         )
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)  # Réponse visible uniquement par l'utilisateur
 
 async def check_level_up(ctx, user_id, server_id):
     # Récupérer l'XP et le niveau actuel de l'utilisateur
@@ -375,17 +360,17 @@ def get_xp_required(level: int, base_xp: int = 100, growth_factor: float = 1.5):
 
 
 # Commande pour voir l'XP d'un joueur
-@bot.command()
-async def xp(ctx, member: typing.Optional[discord.Member] = None):
+@bot.tree.command(name="level", description="📊 Affiche votre niveau et votre XP ou ceux du joueur mentionné.")
+async def level(interaction: discord.Interaction, member: typing.Optional[discord.Member] = None):
     if member is None:
-        member = ctx.author
+        member = interaction.user
       
-  # Vérification pour éviter les erreurs
+    # Vérification pour éviter les erreurs
     if not isinstance(member, discord.Member):
-        await ctx.send("❌ Erreur : Impossible de récupérer les informations de l'utilisateur.")
+        await interaction.response.send_message("❌ Erreur : Impossible de récupérer les informations de l'utilisateur.", ephemeral=True)
         return
       
-    cursor.execute("SELECT xp, level FROM xp WHERE user_id = ? AND server_id = ?", (member.id, ctx.guild.id))
+    cursor.execute("SELECT xp, level FROM xp WHERE user_id = ? AND server_id = ?", (member.id, interaction.guild.id))
     result = cursor.fetchone()
 
     if result is None:
@@ -402,21 +387,21 @@ async def xp(ctx, member: typing.Optional[discord.Member] = None):
         color=discord.Color.blue()
     )
     embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-    embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.avatar.url)
+    embed.set_footer(text=f"Demandé par {interaction.user.name}", icon_url=interaction.user.avatar.url)
 
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
 
-@bot.command()
-async def leaderboard(ctx):
+@bot.tree.command(name="leaderboard", description="🏆 Affiche le classement des 10 meilleurs joueurs en XP sur ce serveur.")
+async def leaderboard(interaction: discord.Interaction):
     # Récupérer les 10 meilleurs joueurs par XP et leur niveau pour ce serveur
-    cursor.execute("SELECT user_id, xp, level FROM xp WHERE server_id = ? ORDER BY xp DESC LIMIT 10", (ctx.guild.id,))
+    cursor.execute("SELECT user_id, xp, level FROM xp WHERE server_id = ? ORDER BY xp DESC LIMIT 10", (interaction.guild.id,))
     top_players = cursor.fetchall()
 
     # Si aucun joueur n'a encore gagné d'XP
     if not top_players:
-        await ctx.send("❌ Aucun joueur n'a encore gagné d'XP sur ce serveur.")
+        await interaction.response.send_message("❌ Aucun joueur n'a encore gagné d'XP sur ce serveur.", ephemeral=True)
         return
 
     # Création de l'embed
@@ -429,7 +414,7 @@ async def leaderboard(ctx):
     # Construire le classement
     for rank, (user_id, xp, level) in enumerate(top_players, 1):
         # Récupérer le membre
-        member = ctx.guild.get_member(user_id)
+        member = interaction.guild.get_member(user_id)
 
         # Vérifier si le membre existe
         if member:
@@ -438,50 +423,61 @@ async def leaderboard(ctx):
             embed.add_field(name=f"#{rank} - Utilisateur inconnu (ID: {user_id})", value=f"**XP**: {xp} | **Niveau**: {level}", inline=False)
 
     # Envoyer l'embed
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
-@bot.command()
+@bot.tree.command(name="set_channel", description="📢 Définit le salon actuel comme celui où apparaîtront les monstres à combattre. Administrateurs uniquement.")
 @commands.has_permissions(administrator=True)
-async def set_channel(ctx, channel: discord.TextChannel):
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
     """Définit le salon où le bot postera ses messages."""
 
-    # Enregistrer le salon dans une base de données ou un fichier pour ce serveur
-    server_id = ctx.guild.id
-    cursor.execute("INSERT OR REPLACE INTO settings (server_id, channel_id, cooldown_rest) VALUES (?, ?, ?)", (server_id, channel.id, time.time() + cooldown_spawn))
+    server_id = interaction.guild.id
+
+    # Mettre à jour la base de données
+    cursor.execute(
+        "INSERT OR REPLACE INTO settings (server_id, channel_id, cooldown_rest) VALUES (?, ?, ?)",
+        (server_id, channel.id, time.time() + cooldown_spawn)
+    )
     conn.commit()
     cursor.execute("UPDATE settings SET current_monster = NULL WHERE server_id = ?", (server_id,))
     conn.commit()
 
     # Création de l'embed
     embed = discord.Embed(
-        title="Salon défini",
+        title="✅ Salon défini",
         description=f"Le salon {channel.mention} a été défini comme salon d'apparition des monstres et des messages.",
         color=discord.Color.green()
     )
 
-    # Envoi de l'embed
-    await ctx.send(embed=embed)
+    # Envoyer l'embed
+    await interaction.response.send_message(embed=embed)
 
-@bot.command()
+@bot.tree.command(name="set_role", description="🏅 Associe un rôle spécifique à un niveau donné. Administrateurs uniquement.")
 @commands.has_permissions(administrator=True)
-async def set_role(ctx, level: int, role: discord.Role):
+async def set_role(interaction: discord.Interaction, level: int, role: discord.Role):
     """Définit le rôle à attribuer à un joueur lorsqu'il atteint un certain niveau."""
 
-    server_id = ctx.guild.id
+    server_id = interaction.guild.id
 
     # Enregistrement du rôle dans la base de données pour le niveau donné
-    cursor.execute("INSERT INTO roles (server_id, level, role_id) VALUES (?, ?, ?) "
-                   "ON CONFLICT(server_id, level) DO UPDATE SET role_id = ?",
-                   (server_id, level, role.id, role.id))
+    cursor.execute(
+        "INSERT INTO roles (server_id, level, role_id) VALUES (?, ?, ?) "
+        "ON CONFLICT(server_id, level) DO UPDATE SET role_id = ?",
+        (server_id, level, role.id, role.id)
+    )
     conn.commit()
 
-    embed = discord.Embed(title="Rôle défini avec succès",
-                          description=f"Le rôle {role.mention} sera attribué aux joueurs qui atteindront le niveau {level}.",
-                          color=discord.Color.green())
-    await ctx.send(embed=embed)
+    # Création de l'embed
+    embed = discord.Embed(
+        title="✅ Rôle défini avec succès",
+        description=f"Le rôle {role.mention} sera attribué aux joueurs qui atteindront le niveau {level}.",
+        color=discord.Color.green()
+    )
 
-@bot.command()
-async def infos(ctx):
+    # Envoi de l'embed
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="infos", description="📜 Affiche la liste des commandes disponibles du bot.")
+async def infos(interaction: discord.Interaction):
     embed = discord.Embed(
         title="📜 Liste des Commandes",
         description="Voici toutes les commandes disponibles pour le bot !",
@@ -490,31 +486,31 @@ async def infos(ctx):
 
     # Catégorie XP et Niveau
     embed.add_field(name="🆙 **XP & Niveau**", value=(
-        "`!kill` - Tue le monstre actuel et gagne de l'XP.\n"
-        "`!xp [@joueur]` - Affiche l'XP et le niveau d'un joueur.\n"
-        "`!leaderboard` - Affiche le classement des joueurs par XP."
+        "`/kill` - Tue le monstre actuel et gagne de l'XP.\n"
+        "`/level [@joueur]` - Affiche le niveau et l'xp d'un joueur ou ceux du joueur mentionné.\n"
+        "`/leaderboard` - Affiche le classement des joueurs par XP."
     ), inline=False)
 
     # Catégorie Monstres
     embed.add_field(name="👾 **Monstres**", value=(
-        "`!nextmonstre` - Indique quand le prochain monstre apparaîtra."
+        "`/nextmonstre` - Indique quand le prochain monstre apparaîtra."
     ), inline=False)
 
     # Catégorie Gestion des rôles et du canal
     embed.add_field(name="🔧 **Gestion des Rôles & Canal**", value=(
-        "`!set_role [niveau] @role` - Assigner un rôle de récompense aux joueurs après avoir atteint un certain niveau.\n"
-        "`!set_channel #channel` - Indique le canal où les monstres apparaîtront."
+        "`/set_role [niveau] @role` - Assigner un rôle de récompense aux joueurs après avoir atteint un certain niveau.\n"
+        "`/set_channel #channel` - Indique le canal où les monstres apparaîtront."
     ), inline=False)
 
     # Catégorie Divers
     embed.add_field(name="⚙ **Autres**", value=(
-        "`!infos` - Affiche cette liste de commandes.\n"
+        "`/infos` - Affiche cette liste de commandes.\n"
     ), inline=False)
 
     # Ajouter un pied de page
-    embed.set_footer(text="Lyoko Warzone Bot • Créé par Maxou", icon_url=ctx.bot.user.avatar.url)
+    embed.set_footer(text="Lyoko Warzone Bot • Créé par Maxou", icon_url=interaction.client.user.avatar.url)
 
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 @bot.event
 async def on_ready():
@@ -530,6 +526,8 @@ async def on_ready():
             # Si le serveur n'a pas encore d'entrée dans la base de données, on l'initialise
             channel_id = None 
             init_server(guild.id, channel_id)
+    # Synchronisation des commandes slash
+    await bot.tree.sync()
 
     # Lancer la boucle de spawn de monstre après l'initialisation
     bot.loop.create_task(spawn_monstre())
