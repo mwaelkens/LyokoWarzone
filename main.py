@@ -425,7 +425,7 @@ async def leaderboard(interaction: discord.Interaction):
     # Envoyer l'embed
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="set_channel", description="📢 Définit le salon actuel comme celui où apparaîtront les monstres à combattre. Administrateurs uniquement.")
+@bot.tree.command(name="set_channel", description="📢 Définit le salon actuel comme celui où les monstres apparaîtront. Administrateurs uniquement.")
 @commands.has_permissions(administrator=True)
 async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
     """Définit le salon où le bot postera ses messages."""
