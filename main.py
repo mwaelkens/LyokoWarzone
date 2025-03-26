@@ -86,7 +86,7 @@ probabilite_kalamar = 0.15  # 20% chance d'apparition du Kalamar
 probabilite_monstre = 1 - probabilite_kolosse - probabilite_méduse - probabilite_william - probabilite_kalamar  # 90% chance d'apparition d'un monstre basique
 
 
-cooldown_spawn = 10  # Temps de rechargement entre chaque apparition de monstre (en secondes)
+cooldown_spawn = 300  # Temps de rechargement entre chaque apparition de monstre (en secondes)
 
 async def spawn_monstre():
     await bot.wait_until_ready()
