@@ -310,7 +310,7 @@ async def check_level_up(interaction, user_id, server_id):
             description=f"{interaction.user.mention} a atteint le **niveau {new_level}** ! 🎊",
             color=discord.Color.green()
         )
-        await interaction.response.send_message(embed=embed)  # Envoyer un embed pour la montée de niveau
+        await interaction.followup.send(embed=embed)  # Envoyer un embed pour la montée de niveau
 
     # Récupérer les rôles associés aux niveaux pour ce serveur
     cursor.execute("SELECT level, role_id FROM roles WHERE server_id = ? ORDER BY level ASC", (server_id,))
@@ -348,7 +348,7 @@ async def check_level_up(interaction, user_id, server_id):
                 description=f"{interaction.user.mention} a obtenu le rôle {role.mention} ! 👑",
                 color=discord.Color.gold()
             )
-            await interaction.response.send_message(embed=embed_role)  # Envoyer un embed pour l'attribution du rôle
+            await interaction.followup.send(embed=embed_role)  # Envoyer un embed pour l'attribution du rôle
 
 def get_xp_required(level: int, base_xp: int = 100, growth_factor: float = 1.5):
     """
