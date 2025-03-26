@@ -17,7 +17,7 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-token = os.getenv("TOKEN_BOT_DISCORD")
+token = os.getenv('TOKEN_BOT_DISCORD')
 
 # Connexion à la base de données SQLite
 conn = sqlite3.connect("lyoko_rpg.db")
