@@ -282,7 +282,7 @@ async def kill(interaction: discord.Interaction):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)  # Réponse visible uniquement par l'utilisateur
 
-async def check_level_up(ctx, user_id, server_id):
+async def check_level_up(interaction, user_id, server_id):
     # Récupérer l'XP et le niveau actuel de l'utilisateur
     cursor.execute("SELECT xp, level FROM xp WHERE user_id = ? AND server_id = ?", (user_id, server_id))
     result = cursor.fetchone()
@@ -307,10 +307,10 @@ async def check_level_up(ctx, user_id, server_id):
 
         embed = discord.Embed(
             title="🎉 Félicitations !",
-            description=f"{ctx.author.mention} a atteint le **niveau {new_level}** ! 🎊",
+            description=f"{interaction.user.mention} a atteint le **niveau {new_level}** ! 🎊",
             color=discord.Color.green()
         )
-        await ctx.send(embed=embed)  # Envoyer un embed pour la montée de niveau
+        await interaction.response.send_message(embed=embed)  # Envoyer un embed pour la montée de niveau
 
     # Récupérer les rôles associés aux niveaux pour ce serveur
     cursor.execute("SELECT level, role_id FROM roles WHERE server_id = ? ORDER BY level ASC", (server_id,))
@@ -320,7 +320,7 @@ async def check_level_up(ctx, user_id, server_id):
         return  # Aucun rôle défini sur ce serveur, donc pas besoin d’aller plus loin
 
     # Vérifier si un rôle doit être attribué
-    guild = ctx.guild
+    guild = interaction.guild
     member = guild.get_member(user_id)
     if not member:
         return  # L'utilisateur n'est pas sur le serveur
@@ -345,10 +345,10 @@ async def check_level_up(ctx, user_id, server_id):
             await member.add_roles(role)  # Ajouter le nouveau rôle
             embed_role = discord.Embed(
                 title="🏅 Nouveau Rôle Débloqué !",
-                description=f"{ctx.author.mention} a obtenu le rôle {role.mention} ! 👑",
+                description=f"{interaction.user.mention} a obtenu le rôle {role.mention} ! 👑",
                 color=discord.Color.gold()
             )
-            await ctx.send(embed=embed_role)
+            await interaction.response.send_message(embed=embed_role)  # Envoyer un embed pour l'attribution du rôle
 
 def get_xp_required(level: int, base_xp: int = 100, growth_factor: float = 1.5):
     """
