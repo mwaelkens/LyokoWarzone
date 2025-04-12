@@ -155,7 +155,7 @@ async def spawn_monstre():
 
         await asyncio.sleep(1)
 
-@bot.tree.command(name="nextmonstre", description="🕒 Affiche le temps restant avant qu'un monstre apparaisse.")
+@bot.tree.command(name="next_monster", description="🕒 Affiche le temps restant avant qu'un monstre apparaisse.")
 async def nextmonstre(interaction: discord.Interaction):
     server_id = interaction.guild.id
 
@@ -227,6 +227,22 @@ async def nextmonstre(interaction: discord.Interaction):
 async def kill(interaction: discord.Interaction):
     server_id = interaction.guild.id
     user_id = interaction.user.id
+    channel_id = interaction.channel.id
+
+     # Récupérer le salon autorisé depuis la base de données
+    cursor.execute("SELECT channel_id FROM settings WHERE server_id = ?", (server_id,))
+    result = cursor.fetchone()
+
+    if result and result[0]:  # Si un salon est défini
+        monster_channel_id = result[0]
+        if channel_id != monster_channel_id:  # Vérifie si l'utilisateur est dans le bon salon
+            embed = discord.Embed(
+                title="❌ Mauvais salon !",
+                description=f"Tu dois utiliser cette commande dans <#{monster_channel_id}>.",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)  # Message visible seulement par l'utilisateur
+            return
 
     # Récupérer le monstre en cours
     cursor.execute("SELECT current_monster FROM settings WHERE server_id = ?", (server_id,))
@@ -257,10 +273,12 @@ async def kill(interaction: discord.Interaction):
 
         if nom_monstre == "Méduse":
             article = "la"
-        elif nom_monstre in ["Kolosse", "Kalamar", "William"]:
+        elif nom_monstre in ["Kolosse", "Kalamar"]:
             article = "le"
         elif nom_monstre in ["Manta", "Tarentule"]:
             article = "une"
+        elif nom_monstre == "William":
+            article = ""
         else:
             article = "un"
 
@@ -476,6 +494,70 @@ async def set_role(interaction: discord.Interaction, level: int, role: discord.R
     # Envoi de l'embed
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.command(name="view_roles", description="📜 Affiche les rôles associés aux niveaux. Administrateurs uniquement.")
+@commands.has_permissions(administrator=True)
+async def view_roles(interaction: discord.Interaction):
+    """Affiche les rôles associés aux niveaux pour le serveur."""  
+
+    server_id = interaction.guild.id
+
+    # Récupérer tous les rôles associés aux niveaux pour ce serveur
+    cursor.execute("SELECT level, role_id FROM roles WHERE server_id = ?", (server_id,))
+    roles = cursor.fetchall()
+
+    if roles:
+        description = "Voici les rôles associés aux niveaux :\n"
+        for level, role_id in roles:
+            role = interaction.guild.get_role(role_id)
+            if role:
+                description += f"**Niveau {level}** : {role.mention}\n"
+            else:
+                description += f"**Niveau {level}** : Rôle supprimé\n"
+        
+        embed = discord.Embed(
+            title="📜 Rôles associés aux niveaux",
+            description=description,
+            color=discord.Color.blue()
+        )
+    else:
+        embed = discord.Embed(
+            title="❌ Aucun rôle trouvé",
+            description="Aucun rôle n'a été associé à un niveau dans ce serveur.",
+            color=discord.Color.red()
+        )
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="remove_role", description="❌ Supprime un rôle associé à un niveau. Administrateurs uniquement.")
+@commands.has_permissions(administrator=True)
+async def remove_role(interaction: discord.Interaction, level: int):
+    """Supprime le rôle associé à un niveau donné."""  
+
+    server_id = interaction.guild.id
+
+    # Vérifier si le rôle existe pour ce niveau
+    cursor.execute("SELECT role_id FROM roles WHERE server_id = ? AND level = ?", (server_id, level))
+    result = cursor.fetchone()
+
+    if result:
+        role_id = result[0]
+        cursor.execute("DELETE FROM roles WHERE server_id = ? AND level = ?", (server_id, level))
+        conn.commit()
+
+        embed = discord.Embed(
+            title="✅ Rôle supprimé avec succès",
+            description=f"Le rôle associé au niveau {level} a été supprimé.",
+            color=discord.Color.green()
+        )
+    else:
+        embed = discord.Embed(
+            title="❌ Aucun rôle associé à ce niveau",
+            description=f"Aucun rôle n'est associé au niveau {level}.",
+            color=discord.Color.red()
+        )
+
+    await interaction.response.send_message(embed=embed)
+
 @bot.tree.command(name="infos", description="📜 Affiche la liste des commandes disponibles du bot.")
 async def infos(interaction: discord.Interaction):
     embed = discord.Embed(
@@ -498,7 +580,9 @@ async def infos(interaction: discord.Interaction):
 
     # Catégorie Gestion des rôles et du canal
     embed.add_field(name="🔧 **Gestion des Rôles & Canal**", value=(
-        "`/set_role [niveau] @role` - Assigner un rôle de récompense aux joueurs après avoir atteint un certain niveau.\n"
+        "`/set_role [niveau] @role` - Assigne un rôle de récompense aux joueurs après avoir atteint un certain niveau. Administrateurs uniquement.\n"
+        "`/remove_role [niveau]` - Supprime le rôle associé à un niveau. Administrateurs uniquement.\n"
+        "`/view_roles` - Affiche les rôles associés aux niveaux. Administrateurs uniquement.\n"
         "`/set_channel #channel` - Indique le canal où les monstres apparaîtront."
     ), inline=False)
 
