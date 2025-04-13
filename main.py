@@ -469,6 +469,33 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
     # Envoyer l'embed
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.command(name="view_channel", description="👁️ Affiche le salon d'apparition actuel des monstres. Administrateurs uniquement.")
+@commands.has_permissions(administrator=True)
+async def voir_channel(interaction: discord.Interaction):
+    """Affiche le salon défini pour l'apparition des monstres."""
+    
+    server_id = interaction.guild.id
+
+    cursor.execute("SELECT channel_id FROM settings WHERE server_id = ?", (server_id,))
+    result = cursor.fetchone()
+
+    if result and result[0]:
+        salon = interaction.guild.get_channel(result[0])
+        if salon:
+            description = f"Les monstres apparaissent actuellement dans le salon {salon.mention}."
+        else:
+            description = "⚠️ Le salon défini n'existe plus ou le bot n'y a pas accès."
+    else:
+        description = "❌ Aucun salon n'a été défini pour l'apparition des monstres."
+
+    embed = discord.Embed(
+        title="📍 Salon d'apparition",
+        description=description,
+        color=discord.Color.blurple()
+    )
+
+    await interaction.response.send_message(embed=embed)
+
 @bot.tree.command(name="set_role", description="🏅 Associe un rôle spécifique à un niveau donné. Administrateurs uniquement.")
 @commands.has_permissions(administrator=True)
 async def set_role(interaction: discord.Interaction, level: int, role: discord.Role):
@@ -583,7 +610,8 @@ async def infos(interaction: discord.Interaction):
         "`/set_role [niveau] @role` - Assigne un rôle de récompense aux joueurs après avoir atteint un certain niveau. Administrateurs uniquement.\n"
         "`/remove_role [niveau]` - Supprime le rôle associé à un niveau. Administrateurs uniquement.\n"
         "`/view_roles` - Affiche les rôles associés aux niveaux. Administrateurs uniquement.\n"
-        "`/set_channel #channel` - Indique le canal où les monstres apparaîtront."
+        "`/set_channel #channel` - Indique le canal où les monstres apparaîtront.\n"
+        "`/view_channel` - Affiche le salon d'apparition actuel des monstres. Administrateurs uniquement."
     ), inline=False)
 
     # Catégorie Divers
