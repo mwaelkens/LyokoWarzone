@@ -79,10 +79,10 @@ william = {"nom": "William", "xp": 400, "image": "https://pm1.aminoapps.com/6164
 
 kalamar = {"nom": "Kalamar", "xp": 200, "image": "https://static.wikia.nocookie.net/codelyoko/images/9/98/Kalamar.jpg/revision/latest?cb=20120105195727&path-prefix=fr"}
 
-probabilite_kolosse = 0.05  # 5% chance d'apparition du Kolosse
-probabilite_william = 0.08  # 10% chance d'apparition de William
-probabilite_méduse = 0.10  # 15% chance d'apparition de la Méduse
-probabilite_kalamar = 0.15  # 20% chance d'apparition du Kalamar
+probabilite_kolosse = 0.01  # 1% chance d'apparition du Kolosse
+probabilite_william = 0.03  # 3% chance d'apparition de William
+probabilite_méduse = 0.05  # 5% chance d'apparition de la Méduse
+probabilite_kalamar = 0.10  # 10% chance d'apparition du Kalamar
 probabilite_monstre = 1 - probabilite_kolosse - probabilite_méduse - probabilite_william - probabilite_kalamar  # 90% chance d'apparition d'un monstre basique
 
 
@@ -400,7 +400,7 @@ async def level(interaction: discord.Interaction, member: typing.Optional[discor
 
     # Création de l'embed
     embed = discord.Embed(
-        title="📊 Statistiques d'XP",
+        title="📊 Statistiques de joueur",
         description=f"{member.mention} est **niveau {level}** avec **{xp} XP** !",
         color=discord.Color.blue()
     )
@@ -425,7 +425,7 @@ async def leaderboard(interaction: discord.Interaction):
     # Création de l'embed
     embed = discord.Embed(
         title="🏆 Classement des meilleurs joueurs 🏆",
-        description="Voici le top 10 des joueurs ayant le plus d'XP sur ce serveur !",
+        description="Voici le top 10 des joueurs de ce serveur !",
         color=discord.Color.gold()
     )
 
@@ -468,7 +468,7 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
 
     # Envoyer l'embed
     await interaction.response.send_message(embed=embed)
-
+    
 @bot.tree.command(name="view_channel", description="👁️ Affiche le salon d'apparition actuel des monstres. Administrateurs uniquement.")
 @commands.has_permissions(administrator=True)
 async def voir_channel(interaction: discord.Interaction):
@@ -610,7 +610,7 @@ async def infos(interaction: discord.Interaction):
         "`/set_role [niveau] @role` - Assigne un rôle de récompense aux joueurs après avoir atteint un certain niveau. Administrateurs uniquement.\n"
         "`/remove_role [niveau]` - Supprime le rôle associé à un niveau. Administrateurs uniquement.\n"
         "`/view_roles` - Affiche les rôles associés aux niveaux. Administrateurs uniquement.\n"
-        "`/set_channel #channel` - Indique le canal où les monstres apparaîtront.\n"
+        "`/set_channel #channel` - Indique le canal où les monstres apparaîtront. Administrateurs uniquement.\n"
         "`/view_channel` - Affiche le salon d'apparition actuel des monstres. Administrateurs uniquement."
     ), inline=False)
 
